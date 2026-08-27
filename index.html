@@ -299,12 +299,21 @@
                  <span className="text-gray-500/80 text-[10px] md:text-sm font-bold block text-center mt-1 md:mt-2">{dayData.title}</span>
               ) : dayData?.rounds ? (
                 <div className="flex flex-wrap gap-1 md:gap-1.5 justify-end">
-                   {dayData.rounds.map((round, idx) => (
-                      <div key={idx} className="relative group/round inline-block">
-                        <span className="text-[9px] md:text-xs font-bold hover:text-white hover:bg-blue-600 hover:border-blue-500 border border-gray-700 bg-gray-800/90 text-gray-300 px-1.5 md:px-2.5 py-0.5 md:py-1.5 rounded md:rounded-lg transition-all block shadow-sm">{round.time}</span>
-                        <div className="hidden sm:block"><TooltipCard round={round} dateData={dayData} reservationsData={reservationsData} /></div>
-                      </div>
-                   ))}
+                   {dayData.rounds.map((round, idx) => {
+                      const rStats = getRoundStats(dayData.date, round.time, reservationsData);
+                      const hasRoundBooking = rStats.usedVIP > 0 || rStats.usedR > 0;
+
+                      return (
+                        <div key={idx} className="relative group/round inline-block">
+                          <div className={`relative overflow-hidden text-[9px] md:text-xs font-bold border px-1.5 md:px-2.5 py-0.5 md:py-1 rounded md:rounded-lg transition-all block shadow-sm text-center cursor-pointer
+                            ${hasRoundBooking ? 'bg-blue-900/30 border-blue-500/50 text-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-400' : 'bg-gray-800/90 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-gray-200'}
+                          `}>
+                            <span className="relative z-10 block">{round.time}</span>
+                          </div>
+                          <div className="hidden sm:block"><TooltipCard round={round} dateData={dayData} reservationsData={reservationsData} /></div>
+                        </div>
+                      );
+                   })}
                 </div>
               ) : null}
             </div>
@@ -321,6 +330,7 @@
 
       const selectedRound = data.rounds.find(r => r.id === selectedRoundId) || data.rounds[0];
       const stats = getRoundStats(data.date, selectedRound.time, reservationsData);
+      const dailyStats = getDailyTotalStats(data, reservationsData);
 
       return (
         <div className="h-full flex flex-col text-gray-100 animate-in slide-up">
@@ -335,6 +345,12 @@
                   {DateUtils.format(parsedDate, 'M월 d일')} <span className="text-lg md:text-2xl font-bold text-gray-500">({DateUtils.format(parsedDate, 'E')})</span>
                   {data.label && <span className="text-xs md:text-sm bg-red-900/50 text-red-200 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-red-700/50 font-bold ml-2">{data.label}</span>}
                 </h2>
+                {dailyStats && (dailyStats.totalVIPUsed > 0 || dailyStats.totalRUsed > 0) && (
+                   <div className="mt-3 flex gap-2">
+                      <span className="text-[10px] md:text-xs bg-yellow-900/30 text-yellow-500 border border-yellow-800/50 px-2 md:px-3 py-1 rounded-lg font-bold shadow-sm">일일 총 예약 VIP: {dailyStats.totalVIPUsed}석</span>
+                      <span className="text-[10px] md:text-xs bg-blue-900/30 text-blue-400 border border-blue-800/50 px-2 md:px-3 py-1 rounded-lg font-bold shadow-sm">일일 총 예약 R: {dailyStats.totalRUsed}석</span>
+                   </div>
+                )}
               </div>
             </div>
           </div>
@@ -344,12 +360,21 @@
                <div className="bg-[#151720] border border-gray-800 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl">
                   <h3 className="text-xs md:text-sm font-bold mb-3 md:mb-4 text-gray-400 uppercase tracking-wider flex items-center gap-2"><IconClock className="w-4 h-4"/> 회차 선택</h3>
                   <div className="flex flex-col gap-2 md:gap-3">
-                    {data.rounds.map((round) => (
-                      <button key={round.id} onClick={() => setSelectedRoundId(round.id)} className={`flex items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all duration-300 cursor-pointer ${selectedRoundId === round.id ? 'bg-blue-600 border-blue-500 text-white shadow-[0_10px_20px_-10px_rgba(37,99,235,0.8)] scale-[1.02]' : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:text-gray-200 hover:border-gray-600'}`}>
-                        <span className="text-xl md:text-2xl font-black">{round.time}</span>
-                        <div className={`text-xs md:text-sm font-bold px-2 md:px-3 py-1 rounded-full ${selectedRoundId === round.id ? 'bg-blue-800/50 text-blue-100' : 'bg-gray-900 text-gray-500'}`}>{round.roundNum}회차</div>
+                    {data.rounds.map((round) => {
+                      const rStats = getRoundStats(data.date, round.time, reservationsData);
+                      return (
+                      <button key={round.id} onClick={() => setSelectedRoundId(round.id)} className={`flex flex-col p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all duration-300 cursor-pointer ${selectedRoundId === round.id ? 'bg-blue-600 border-blue-500 text-white shadow-[0_10px_20px_-10px_rgba(37,99,235,0.8)] scale-[1.02]' : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:text-gray-200 hover:border-gray-600'}`}>
+                        <div className="flex items-center justify-between w-full mb-1.5">
+                          <span className="text-xl md:text-2xl font-black">{round.time}</span>
+                          <div className={`text-xs md:text-sm font-bold px-2 md:px-3 py-1 rounded-full ${selectedRoundId === round.id ? 'bg-blue-800/50 text-blue-100' : 'bg-gray-900 text-gray-500'}`}>{round.roundNum}회차</div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full justify-start text-[10px] md:text-xs">
+                          {rStats.usedVIP > 0 && <span className={`font-bold ${selectedRoundId === round.id ? 'text-yellow-200' : 'text-yellow-500'}`}>VIP {rStats.usedVIP}석</span>}
+                          {rStats.usedR > 0 && <span className={`font-bold ${selectedRoundId === round.id ? 'text-blue-200' : 'text-blue-400'}`}>R {rStats.usedR}석</span>}
+                          {rStats.usedVIP === 0 && rStats.usedR === 0 && <span className="opacity-50 font-medium">예약 없음</span>}
+                        </div>
                       </button>
-                    ))}
+                    )})}
                   </div>
                </div>
 
@@ -441,7 +466,7 @@
     };
 
     // --- STREAMING_CHUNK:Component for overall statistics table view... ---
-    const OverallStatsView = ({ reservationsData, onBack }) => {
+    const OverallStatsView = ({ reservationsData, onBack, days, monthStart }) => {
       const totalVIP = reservationsData.reduce((sum, d) => sum + (Number(d?.vipCount) || 0), 0);
       const totalR = reservationsData.reduce((sum, d) => sum + (Number(d?.rCount) || 0), 0);
       
@@ -484,8 +509,64 @@
           </div>
 
           <div className="bg-[#151720] border border-gray-800/80 rounded-2xl md:rounded-3xl p-4 md:p-8 flex flex-col shadow-2xl flex-grow overflow-hidden">
+            
+            <h3 className="text-lg md:text-2xl font-black text-white flex items-center tracking-tight mb-4 border-b border-gray-800 pb-4">
+              <IconChart className="w-5 h-5 md:w-6 md:h-6 mr-2 text-yellow-500"/> 일자 및 회차별 요약 캘린더
+            </h3>
+            
+            <div className="mb-8 bg-[#12141c] p-2 md:p-4 rounded-xl border border-gray-800">
+               <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
+                 {['일', '월', '화', '수', '목', '금', '토'].map((wd, i) => (
+                   <div key={wd} className={`text-center font-bold text-[10px] md:text-sm pb-1 md:pb-2 border-b border-gray-800/50 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-500'}`}>{wd}</div>
+                 ))}
+               </div>
+               <div className="grid grid-cols-7 gap-1 md:gap-2">
+                 {days.map((day) => {
+                   const isCurrentMonth = DateUtils.isSameMonth(day, monthStart);
+                   const dateStr = DateUtils.format(day, 'yyyy-MM-dd');
+                   const dayBookings = reservationsData.filter(d => d.date === dateStr);
+                   const dailyVIP = dayBookings.reduce((sum, d) => sum + (Number(d.vipCount) || 0), 0);
+                   const dailyR = dayBookings.reduce((sum, d) => sum + (Number(d.rCount) || 0), 0);
+                   
+                   const rounds = {};
+                   dayBookings.forEach(d => {
+                       if(!rounds[d.time]) rounds[d.time] = {vip: 0, r: 0};
+                       rounds[d.time].vip += (Number(d.vipCount) || 0);
+                       rounds[d.time].r += (Number(d.rCount) || 0);
+                   });
+
+                   return (
+                     <div key={day.toString()} className={`min-h-[70px] md:min-h-[100px] p-1 md:p-2 rounded-lg border ${dailyVIP > 0 || dailyR > 0 ? 'border-blue-800/50 bg-[#1a1d27] shadow-sm' : 'border-gray-800/50 bg-[#151720] opacity-60'} ${!isCurrentMonth ? 'opacity-20' : ''} flex flex-col transition-all`}>
+                       <div className={`text-[9px] md:text-sm font-black mb-1 md:mb-2 ${day.getDay() === 0 ? 'text-red-400' : day.getDay() === 6 ? 'text-blue-400' : 'text-gray-300'}`}>
+                         {DateUtils.format(day, 'd')}
+                       </div>
+                       {(dailyVIP > 0 || dailyR > 0) ? (
+                         <div className="flex flex-col gap-1 flex-grow">
+                           <div className="flex flex-col xl:flex-row gap-0.5 md:gap-1 border-b border-gray-700/80 pb-1 mb-0.5 md:mb-1">
+                             <span className="text-[7px] md:text-[10px] bg-yellow-900/30 text-yellow-500 border border-yellow-800/50 px-0.5 py-0.5 rounded flex-1 text-center font-bold truncate">VIP {dailyVIP}</span>
+                             <span className="text-[7px] md:text-[10px] bg-blue-900/30 text-blue-400 border border-blue-800/50 px-0.5 py-0.5 rounded flex-1 text-center font-bold truncate">R {dailyR}</span>
+                           </div>
+                           <div className="space-y-0.5 md:space-y-1">
+                             {Object.entries(rounds).sort((a, b) => a[0].localeCompare(b[0])).map(([time, stats]) => (
+                               <div key={time} className="text-[7px] md:text-[10px] flex flex-col xl:flex-row xl:justify-between xl:items-center bg-gray-900/80 p-0.5 md:px-1.5 md:py-1 rounded border border-gray-800/80">
+                                 <span className="text-gray-300 font-bold text-center xl:text-left mb-0.5 xl:mb-0">{time}</span>
+                                 <div className="flex justify-center gap-1 text-gray-400">
+                                   {stats.vip > 0 && <span className="text-yellow-500/90 font-medium">V{stats.vip}</span>}
+                                   {stats.r > 0 && <span className="text-blue-400/90 font-medium">R{stats.r}</span>}
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
+                       ) : null}
+                     </div>
+                   );
+                 })}
+               </div>
+            </div>
+
             <h3 className="text-lg md:text-2xl font-black text-white flex items-center tracking-tight mb-4 md:mb-6 border-b border-gray-800 pb-4">
-              <IconTicket className="w-5 h-5 md:w-6 md:h-6 mr-2 text-blue-500"/> 상세 예약 리스트 ({sortedData.length}건)
+              <IconTicket className="w-5 h-5 md:w-6 md:h-6 mr-2 text-blue-500"/> 전체 상세 예약 리스트 ({sortedData.length}건)
             </h3>
             <div className="overflow-x-auto custom-scrollbar flex-grow pr-2">
                <table className="w-full text-left border-collapse min-w-[500px]">
@@ -626,9 +707,14 @@
           )}
 
           {showOverallStats ? (
-            <OverallStatsView reservationsData={reservationsData} onBack={() => setShowOverallStats(false)} />
-          ) : !selectedDateData ? (
-            <div className="animate-in">
+          <OverallStatsView 
+            reservationsData={reservationsData} 
+            onBack={() => setShowOverallStats(false)} 
+            days={days} 
+            monthStart={monthStart} 
+          />
+        ) : !selectedDateData ? (
+          <div className="animate-in">
               <div className="flex flex-col xl:flex-row xl:items-end justify-between mb-6 md:mb-8 gap-4 border-b border-gray-800/80 pb-6 md:pb-8">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-blue-400 font-bold text-xs md:text-sm"><IconTicket className="w-4 h-4 md:w-5 md:h-5" /> MUSICAL TICKET DASHBOARD</div>
