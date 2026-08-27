@@ -466,7 +466,7 @@
     };
 
     // --- STREAMING_CHUNK:Component for overall statistics table view... ---
-    const OverallStatsView = ({ reservationsData, onBack, days, monthStart }) => {
+    const OverallStatsView = ({ reservationsData, onBack }) => {
       const totalVIP = reservationsData.reduce((sum, d) => sum + (Number(d?.vipCount) || 0), 0);
       const totalR = reservationsData.reduce((sum, d) => sum + (Number(d?.rCount) || 0), 0);
       
@@ -474,6 +474,15 @@
         if (a.date !== b.date) return a.date.localeCompare(b.date);
         return a.time.localeCompare(b.time);
       });
+
+      // 전체 요약 캘린더 전용 고정 기간 생성 (9월 9일 주간 ~ 10월 5일 주간)
+      const statsDays = [];
+      let currentDay = DateUtils.parseISO('2026-09-06'); // 9월 9일이 포함된 주의 일요일 (시작일)
+      const endDay = DateUtils.parseISO('2026-10-10'); // 10월 5일이 포함된 주의 토요일 (종료일)
+      while (currentDay <= endDay) { 
+        statsDays.push(currentDay); 
+        currentDay = DateUtils.addDays(currentDay, 1); 
+      }
 
       return (
         <div className="h-full flex flex-col text-gray-100 animate-in slide-up mt-2">
@@ -511,7 +520,7 @@
           <div className="bg-[#151720] border border-gray-800/80 rounded-2xl md:rounded-3xl p-4 md:p-8 flex flex-col shadow-2xl flex-grow overflow-hidden">
             
             <h3 className="text-lg md:text-2xl font-black text-white flex items-center tracking-tight mb-4 border-b border-gray-800 pb-4">
-              <IconChart className="w-5 h-5 md:w-6 md:h-6 mr-2 text-yellow-500"/> 일자 및 회차별 요약 캘린더
+              <IconChart className="w-5 h-5 md:w-6 md:h-6 mr-2 text-yellow-500"/> 공연 전체(5주) 일자/회차별 요약 캘린더
             </h3>
             
             <div className="mb-8 bg-[#12141c] p-2 md:p-4 rounded-xl border border-gray-800">
@@ -521,8 +530,7 @@
                  ))}
                </div>
                <div className="grid grid-cols-7 gap-1 md:gap-2">
-                 {days.map((day) => {
-                   const isCurrentMonth = DateUtils.isSameMonth(day, monthStart);
+                 {statsDays.map((day) => {
                    const dateStr = DateUtils.format(day, 'yyyy-MM-dd');
                    const dayBookings = reservationsData.filter(d => d.date === dateStr);
                    const dailyVIP = dayBookings.reduce((sum, d) => sum + (Number(d.vipCount) || 0), 0);
@@ -535,10 +543,14 @@
                        rounds[d.time].r += (Number(d.rCount) || 0);
                    });
 
+                   // 매월 1일인 경우 월(Month) 표시 추가 (예: 10/1)
+                   const isFirstDayOfMonth = day.getDate() === 1;
+                   const dayDisplay = isFirstDayOfMonth ? `${day.getMonth() + 1}/${day.getDate()}` : DateUtils.format(day, 'd');
+
                    return (
-                     <div key={day.toString()} className={`min-h-[70px] md:min-h-[100px] p-1 md:p-2 rounded-lg border ${dailyVIP > 0 || dailyR > 0 ? 'border-blue-800/50 bg-[#1a1d27] shadow-sm' : 'border-gray-800/50 bg-[#151720] opacity-60'} ${!isCurrentMonth ? 'opacity-20' : ''} flex flex-col transition-all`}>
+                     <div key={day.toString()} className={`min-h-[70px] md:min-h-[100px] p-1 md:p-2 rounded-lg border ${dailyVIP > 0 || dailyR > 0 ? 'border-blue-800/50 bg-[#1a1d27] shadow-sm' : 'border-gray-800/50 bg-[#151720] opacity-70'} flex flex-col transition-all`}>
                        <div className={`text-[9px] md:text-sm font-black mb-1 md:mb-2 ${day.getDay() === 0 ? 'text-red-400' : day.getDay() === 6 ? 'text-blue-400' : 'text-gray-300'}`}>
-                         {DateUtils.format(day, 'd')}
+                         {dayDisplay}
                        </div>
                        {(dailyVIP > 0 || dailyR > 0) ? (
                          <div className="flex flex-col gap-1 flex-grow">
